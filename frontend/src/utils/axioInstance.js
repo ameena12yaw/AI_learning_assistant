@@ -75,6 +75,14 @@ axiosInstance.interceptors.response.use(
       );
     }
 
+    if (error.response?.status === 404) {
+      return Promise.reject(
+        Object.assign(new Error(apiMessage || 'Resource not found. Check that the API URL is correct and the backend is deployed.'), {
+          status: 404,
+        })
+      );
+    }
+
     if (apiMessage) {
       return Promise.reject(Object.assign(new Error(apiMessage), { status: error.response?.status }));
     }

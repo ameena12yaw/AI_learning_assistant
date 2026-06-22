@@ -4,6 +4,7 @@ import {
     uploadDocument,
     getDocuments,
     getDocument,
+    streamDocumentFile,
     deleteDocument,
 
 } from '../controllers/documentController.js';
@@ -20,6 +21,7 @@ router.use(protect);
 
 router.post('/upload', upload.single('file'), uploadDocument);
 router.get('/', getDocuments);
+router.get('/:id/file', streamDocumentFile);
 router.get('/:id', getDocument);
 router.delete('/:id', deleteDocument);
 

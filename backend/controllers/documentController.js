@@ -5,8 +5,12 @@ import { mapDocument, isValidUuid } from '../utils/formatDb.js';
 import {
   uploadDocumentFile,
   deleteDocumentFile,
+  downloadDocumentFile,
   isSupabaseStoragePath,
   isLocalUploadPath,
+  resolveDocumentFileUrl,
+  shouldRefreshFileUrl,
+  ensureStorageBucket,
 } from '../utils/documentStorage.js';
 
 import fs from 'fs/promises';
@@ -18,10 +22,37 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const uploadDir = path.join(__dirname, '../uploads/documents');
 
+const getMimeType = (filename = '') => {
+  const ext = path.extname(filename).toLowerCase();
+  const mimeTypes = {
+    '.pdf': 'application/pdf',
+    '.doc': 'application/msword',
+    '.docx': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  };
+  return mimeTypes[ext] || 'application/octet-stream';
+};
+
+const isSupabaseStorageKey = (storedFilename = '') =>
+  storedFilename.includes('/') && !storedFilename.startsWith('http');
+
 const writeTempFile = async (buffer, filename) => {
   const tempPath = path.join(os.tmpdir(), `doc-${Date.now()}-${path.basename(filename)}`);
   await fs.writeFile(tempPath, buffer);
   return tempPath;
+};
+
+const withResolvedFileUrl = async (document) => {
+  if (!document) return document;
+
+  const resolvedUrl = resolveDocumentFileUrl(document);
+  if (!resolvedUrl) return document;
+
+  if (shouldRefreshFileUrl(document) && resolvedUrl !== document.filepath) {
+    await supabase.from('documents').update({ filepath: resolvedUrl }).eq('id', document.id);
+    document.filepath = resolvedUrl;
+  }
+
+  return document;
 };
 
 export const uploadDocument = async (req, res, next) => {
@@ -33,6 +64,15 @@ export const uploadDocument = async (req, res, next) => {
     const { title } = req.body;
     if (!title) {
       return res.status(400).json({ success: false, error: 'Title is required', statusCode: 400 });
+    }
+
+    const storage = await ensureStorageBucket();
+    if (!storage.ok) {
+      return res.status(503).json({
+        success: false,
+        error: `Online document storage is not ready: ${storage.error}`,
+        statusCode: 503,
+      });
     }
 
     const { storagePath, publicUrl } = await uploadDocumentFile(req.user._id, req.file);
@@ -127,10 +167,13 @@ export const getDocuments = async (req, res, next) => {
       quizCounts[q.document_id] = (quizCounts[q.document_id] || 0) + 1;
     });
 
-    const mapped = (documents || []).map((doc) =>
-      mapDocument(doc, {
-        flashcardCount: flashcardCounts[doc.id] || 0,
-        quizCount: quizCounts[doc.id] || 0,
+    const mapped = await Promise.all(
+      (documents || []).map(async (doc) => {
+        const resolved = await withResolvedFileUrl(doc);
+        return mapDocument(resolved, {
+          flashcardCount: flashcardCounts[doc.id] || 0,
+          quizCount: quizCounts[doc.id] || 0,
+        });
       })
     );
 
@@ -163,6 +206,8 @@ export const getDocument = async (req, res, next) => {
       return res.status(404).json({ success: false, error: 'Document not found', statusCode: 404 });
     }
 
+    await withResolvedFileUrl(document);
+
     const { count: flashcardCount } = await supabase
       .from('flashcards')
       .select('*', { count: 'exact', head: true })
@@ -183,6 +228,70 @@ export const getDocument = async (req, res, next) => {
     res.status(200).json({
       success: true,
       data: mapDocument(document, { flashcardCount: flashcardCount || 0, quizCount: quizCount || 0 }),
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const streamDocumentFile = async (req, res, next) => {
+  try {
+    if (!isValidUuid(req.params.id)) {
+      return res.status(404).json({ success: false, error: 'Document not found', statusCode: 404 });
+    }
+
+    const { data: document, error } = await supabase
+      .from('documents')
+      .select('*')
+      .eq('id', req.params.id)
+      .eq('user_id', req.user._id)
+      .maybeSingle();
+
+    if (error) throw error;
+
+    if (!document) {
+      return res.status(404).json({ success: false, error: 'Document not found', statusCode: 404 });
+    }
+
+    const filename = document.filename || 'document';
+    const contentType = getMimeType(filename);
+
+    if (isSupabaseStorageKey(document.stored_filename)) {
+      try {
+        const fileBlob = await downloadDocumentFile(document.stored_filename);
+        const buffer = Buffer.from(await fileBlob.arrayBuffer());
+        res.setHeader('Content-Type', contentType);
+        res.setHeader('Content-Disposition', `inline; filename="${filename}"`);
+        return res.send(buffer);
+      } catch {
+        return res.status(404).json({
+          success: false,
+          error: 'File not found in online storage. Delete this document and upload it again.',
+          statusCode: 404,
+        });
+      }
+    }
+
+    if (document.stored_filename && isLocalUploadPath(document.filepath)) {
+      const legacyPath = path.join(uploadDir, path.basename(document.stored_filename));
+      try {
+        const buffer = await fs.readFile(legacyPath);
+        res.setHeader('Content-Type', contentType);
+        res.setHeader('Content-Disposition', `inline; filename="${filename}"`);
+        return res.send(buffer);
+      } catch {
+        return res.status(404).json({
+          success: false,
+          error: 'This file was saved locally and is no longer available. Re-upload the document.',
+          statusCode: 404,
+        });
+      }
+    }
+
+    return res.status(404).json({
+      success: false,
+      error: 'Document file is not available. Re-upload the document.',
+      statusCode: 404,
     });
   } catch (error) {
     next(error);

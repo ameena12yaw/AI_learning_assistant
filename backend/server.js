@@ -8,6 +8,7 @@ import { fileURLToPath } from 'url';
 import './config/supabase.js';
 import { assertOpenRouterConfigured } from './config/openrouter.js';
 import { getAllowedOrigins, isOriginAllowed } from './utils/appUrl.js';
+import { ensureStorageBucket } from './utils/documentStorage.js';
 import errorHandler from './middleware/errorHandler.js';
 import authRoutes from './routes/authRoutes.js';
 import documentRoutes from './routes/documentRoutes.js';
@@ -24,11 +25,23 @@ const __dirname = path.dirname(__filename);
 const app = express();
 const allowedOrigins = getAllowedOrigins();
 
-app.use(
-  helmet({
-    crossOriginResourcePolicy: { policy: 'cross-origin' },
-  })
-);
+const helmetMiddleware = helmet({
+  crossOriginResourcePolicy: { policy: 'cross-origin' },
+});
+
+// Allow the Vite app (different port) to embed PDFs from /uploads
+app.use((req, res, next) => {
+  if (req.path.startsWith('/uploads')) {
+    next();
+    return;
+  }
+  helmetMiddleware(req, res, next);
+});
+
+app.use('/uploads', (req, res, next) => {
+  res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
+  next();
+});
 
 app.use(
   cors({
@@ -61,11 +74,17 @@ app.get('/', (req, res) => {
   });
 });
 
-app.get('/api/health', (req, res) => {
+app.get('/api/health', async (req, res) => {
+  const storage = await ensureStorageBucket();
+
   res.status(200).json({
     success: true,
     status: 'ok',
     environment: process.env.NODE_ENV || 'development',
+    storage: {
+      provider: 'supabase',
+      ...storage,
+    },
   });
 });
 
@@ -95,8 +114,18 @@ app.use((req, res) => {
 const PORT = process.env.PORT || 8000;
 
 if (process.env.NODE_ENV !== 'test') {
-  app.listen(PORT, () => {
+  app.listen(PORT, async () => {
     console.log(`Server running in ${process.env.NODE_ENV || 'development'} mode on port ${PORT}`);
+
+    const storage = await ensureStorageBucket();
+    if (storage.ok) {
+      console.log(`Document storage ready: Supabase bucket "${storage.bucket}" (public=${storage.public})`);
+    } else {
+      console.warn(
+        `Document storage not ready: ${storage.error}. Run backend/supabase/migrations/002_storage_bucket.sql in Supabase SQL Editor.`
+      );
+    }
+
     if (process.env.NODE_ENV === 'production' && allowedOrigins.length === 0) {
       console.warn('Warning: FRONTEND_URL is not set. CORS may block browser requests.');
     }

@@ -14,6 +14,7 @@ export const API_PATHS = {
         UPLOAD: "/api/documents/upload",
         GET_DOCUMENTS: "/api/documents/",
         GET_DOCUMENT_BY_ID: (id) => `/api/documents/${id}`,
+        GET_DOCUMENT_FILE: (id) => `/api/documents/${id}/file`,
         UPDATE_DOCUMENT: (id) => `/api/documents/${id}`,
         DELETE_DOCUMENT: (id) => `/api/documents/${id}`,
     },
