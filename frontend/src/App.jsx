@@ -13,6 +13,7 @@ import QuizTakePage from './pages/Quizzes/QuizTakePage'
 import QuizResultPage from './pages/Quizzes/QuizResultPage'
 import ProfilePage from './pages/Profile/ProfilePage'
 import { useAuth } from './context/AuthContext.jsx'
+import ApiSetupBanner from './Components/common/ApiSetupBanner.jsx'
 
 function App() {
   const { isAuthenticated, loading } = useAuth();
@@ -24,7 +25,9 @@ function App() {
 
 
   return (
-    <Router>
+    <>
+      <ApiSetupBanner />
+      <Router>
       <Routes>
         <Route path="/" element={isAuthenticated ? <Navigate to="/dashboard" replace /> : <Navigate to="/login" replace />} />
         <Route path="/login" element={<LoginPage />} />
@@ -46,6 +49,7 @@ function App() {
         <Route path="*" element={<NotFoundPage />} />
       </Routes>
     </Router>
+    </>
   )
 }
 

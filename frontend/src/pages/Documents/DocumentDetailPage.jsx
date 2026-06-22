@@ -12,6 +12,7 @@ import Flashcard from '../../Components/flashcard/Flashcard.jsx'
 import FlashcardManager from '../../Components/flashcard/FlashcardManager.jsx'
 import QuizManager from '../../Components/quizzes/QuizManager.jsx'
 import { isPdfFile, isWordFile } from '../../utils/documentTypes.js'
+import { API_BASE_URL } from '../../utils/apiConfig.js'
 
 
 const DocumentDetailPage = () => {
@@ -51,7 +52,7 @@ const DocumentDetailPage = () => {
       return filePath;
     }
 
-    const baseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
+    const baseUrl = API_BASE_URL;
     return `${baseUrl}/${filePath.startsWith('/') ? filePath.slice(1) : filePath}`;
   };
 

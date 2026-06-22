@@ -124,7 +124,7 @@ The frontend is deployed on **Vercel**. The Express API should be deployed separ
 
 1. Push this repo to GitHub.
 2. Create a **Web Service** on [Render](https://render.com) from the repo.
-3. Set **Root Directory** to `backend`.
+3. **Important:** set **Root Directory** to `backend` (not the repo root).
 4. **Build command:** `npm install`
 5. **Start command:** `npm start`
 6. Add environment variables from `backend/.env.example`:
@@ -136,6 +136,8 @@ The frontend is deployed on **Vercel**. The Express API should be deployed separ
    - `OPENROUTER_SITE_URL` — same as `FRONTEND_URL` (optional)
 
 Or use the included `render.yaml` blueprint for one-click setup.
+
+**Render `npm install` failed?** In Render → your service → **Settings**, confirm **Root Directory** is `backend`. If it is empty, Render installs the whole monorepo (including the frontend) and the build often fails.
 
 ### 2. Deploy the frontend (Vercel)
 

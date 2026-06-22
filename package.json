@@ -5,7 +5,7 @@
     "node": ">=18"
   },
   "scripts": {
-    "postinstall": "npm install --prefix frontend",
+    "postinstall": "node scripts/postinstall.js",
     "build": "npm run build --prefix frontend",
     "build:frontend": "npm run build --prefix frontend"
   }

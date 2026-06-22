@@ -1,5 +1,6 @@
 import axios from 'axios';
 import { BASE_URL } from './apiPaths';
+import { getApiConnectionErrorMessage } from './apiConfig.js';
 
 const DEFAULT_TIMEOUT = 30000;
 const AI_TIMEOUT = 120000;
@@ -44,6 +45,10 @@ axiosInstance.interceptors.response.use(
         ? 'AI request timed out. This can take up to 2 minutes — please try again.'
         : 'Request timed out. Please try again.';
       return Promise.reject(Object.assign(new Error(message), { code: 'ECONNABORTED' }));
+    }
+
+    if (!error.response && (error.code === 'ERR_NETWORK' || error.message === 'Network Error')) {
+      return Promise.reject(new Error(getApiConnectionErrorMessage()));
     }
 
     if (apiMessage) {
