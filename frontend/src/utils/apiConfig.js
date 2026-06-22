@@ -8,11 +8,12 @@ const normalizeApiBaseUrl = (url) => {
 };
 
 const configuredUrl = normalizeApiBaseUrl(import.meta.env.VITE_API_BASE_URL || '');
+const usesApiProxy = import.meta.env.VITE_USE_API_PROXY === 'true';
 const isProduction = import.meta.env.PROD;
 
 export const API_BASE_URL = configuredUrl || (isProduction ? '' : 'http://localhost:8000');
 
-export const isApiMisconfigured = isProduction && !configuredUrl;
+export const isApiMisconfigured = isProduction && !configuredUrl && !usesApiProxy;
 
 export const getApiConnectionErrorMessage = () => {
   if (isApiMisconfigured) {

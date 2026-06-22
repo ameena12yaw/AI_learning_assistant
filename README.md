@@ -159,13 +159,23 @@ Or use the included `render.yaml` blueprint for one-click setup.
 | Output Directory | `frontend/dist` |
 | Install Command | `npm install` (default) |
 
-**Vercel environment variable (required):**
+**Vercel environment variable (required before deploy):**
+
+Set **one** of these to your Render API URL (no trailing slash):
+
+```
+BACKEND_URL=https://your-api.onrender.com
+```
+
+or
 
 ```
 VITE_API_BASE_URL=https://your-api.onrender.com
 ```
 
-Redeploy after adding env vars. Vite bakes `VITE_*` values in at build time.
+`BACKEND_URL` enables a same-origin API proxy on Vercel. `VITE_API_BASE_URL` calls Render directly from the browser.
+
+**Redeploy after adding env vars** — they are applied at build time.
 
 ### 3. Verify
 
