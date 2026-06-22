@@ -1,6 +1,13 @@
 const trimTrailingSlash = (url) => url.replace(/\/+$/, '');
 
-const configuredUrl = trimTrailingSlash(import.meta.env.VITE_API_BASE_URL || '');
+const normalizeApiBaseUrl = (url) => {
+  if (!url) return '';
+  const trimmed = trimTrailingSlash(url);
+  // Avoid double /api paths if env var was set with a trailing /api
+  return trimmed.replace(/\/api$/i, '');
+};
+
+const configuredUrl = normalizeApiBaseUrl(import.meta.env.VITE_API_BASE_URL || '');
 const isProduction = import.meta.env.PROD;
 
 export const API_BASE_URL = configuredUrl || (isProduction ? '' : 'http://localhost:8000');

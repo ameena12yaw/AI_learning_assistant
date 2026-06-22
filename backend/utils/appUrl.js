@@ -2,7 +2,7 @@ const trimTrailingSlash = (url) => url.replace(/\/+$/, '');
 
 export const getApiBaseUrl = () => {
   if (process.env.API_BASE_URL) {
-    return trimTrailingSlash(process.env.API_BASE_URL);
+    return trimTrailingSlash(process.env.API_BASE_URL).replace(/\/api$/i, '');
   }
 
   const port = process.env.PORT || 8000;
