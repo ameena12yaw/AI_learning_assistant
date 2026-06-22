@@ -1,6 +1,6 @@
 import axios from 'axios';
 import { BASE_URL } from './apiPaths';
-import { getApiConnectionErrorMessage } from './apiConfig.js';
+import { getApiConnectionErrorMessage, isApiMisconfigured } from './apiConfig.js';
 
 const DEFAULT_TIMEOUT = 30000;
 const AI_TIMEOUT = 120000;
@@ -17,6 +17,10 @@ const axiosInstance = axios.create({
 
 axiosInstance.interceptors.request.use(
   (config) => {
+    if (isApiMisconfigured) {
+      return Promise.reject(new Error(getApiConnectionErrorMessage()));
+    }
+
     const token = localStorage.getItem('token');
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
@@ -49,6 +53,14 @@ axiosInstance.interceptors.response.use(
 
     if (!error.response && (error.code === 'ERR_NETWORK' || error.message === 'Network Error')) {
       return Promise.reject(new Error(getApiConnectionErrorMessage()));
+    }
+
+    if (error.response?.status === 405) {
+      return Promise.reject(
+        new Error(
+          'Request failed (405). The frontend is calling itself instead of the API. Set VITE_API_BASE_URL in Vercel to your Render URL and redeploy.'
+        )
+      );
     }
 
     if (apiMessage) {

@@ -16,7 +16,7 @@ export const isApiMisconfigured = isProduction && !configuredUrl;
 
 export const getApiConnectionErrorMessage = () => {
   if (isApiMisconfigured) {
-    return 'API URL is not configured. Set VITE_API_BASE_URL in Vercel and redeploy.';
+    return 'API URL is not configured. Set VITE_API_BASE_URL in Vercel to your Render backend URL, then redeploy.';
   }
 
   if (isProduction) {
