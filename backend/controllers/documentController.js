@@ -2,15 +2,27 @@ import supabase from '../config/supabase.js';
 import { extractTextFromDocument } from '../utils/documentParser.js';
 import { chunkText } from '../utils/textChunker.js';
 import { mapDocument, isValidUuid } from '../utils/formatDb.js';
-import { getApiBaseUrl } from '../utils/appUrl.js';
+import {
+  uploadDocumentFile,
+  deleteDocumentFile,
+  isSupabaseStoragePath,
+  isLocalUploadPath,
+} from '../utils/documentStorage.js';
 
 import fs from 'fs/promises';
+import os from 'os';
 import path from 'path';
 import { fileURLToPath } from 'url';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const uploadDir = path.join(__dirname, '../uploads/documents');
+
+const writeTempFile = async (buffer, filename) => {
+  const tempPath = path.join(os.tmpdir(), `doc-${Date.now()}-${path.basename(filename)}`);
+  await fs.writeFile(tempPath, buffer);
+  return tempPath;
+};
 
 export const uploadDocument = async (req, res, next) => {
   try {
@@ -20,12 +32,10 @@ export const uploadDocument = async (req, res, next) => {
 
     const { title } = req.body;
     if (!title) {
-      await fs.unlink(req.file.path);
       return res.status(400).json({ success: false, error: 'Title is required', statusCode: 400 });
     }
 
-    const baseUrl = getApiBaseUrl();
-    const fileUrl = `${baseUrl}/uploads/documents/${req.file.filename}`;
+    const { storagePath, publicUrl } = await uploadDocumentFile(req.user._id, req.file);
 
     const { data: document, error } = await supabase
       .from('documents')
@@ -33,8 +43,8 @@ export const uploadDocument = async (req, res, next) => {
         user_id: req.user._id,
         title,
         filename: req.file.originalname,
-        stored_filename: req.file.filename,
-        filepath: fileUrl,
+        stored_filename: storagePath,
+        filepath: publicUrl,
         filesize: req.file.size,
         status: 'processing',
       })
@@ -43,7 +53,7 @@ export const uploadDocument = async (req, res, next) => {
 
     if (error) throw error;
 
-    processDocument(document.id, req.file.path).catch((err) => {
+    processDocument(document.id, req.file.buffer, req.file.originalname).catch((err) => {
       console.error('Error processing document:', err);
     });
 
@@ -53,16 +63,16 @@ export const uploadDocument = async (req, res, next) => {
       message: 'Document uploaded successfully and is being processed',
     });
   } catch (error) {
-    if (req.file) {
-      await fs.unlink(req.file.path).catch(() => {});
-    }
     next(error);
   }
 };
 
-const processDocument = async (documentId, filePath) => {
+const processDocument = async (documentId, fileBuffer, originalName) => {
+  let tempPath;
+
   try {
-    const { text } = await extractTextFromDocument(filePath);
+    tempPath = await writeTempFile(fileBuffer, originalName);
+    const { text } = await extractTextFromDocument(tempPath);
     const chunks = chunkText(text, 50, 5);
 
     const { error } = await supabase
@@ -79,6 +89,10 @@ const processDocument = async (documentId, filePath) => {
   } catch (error) {
     console.error(`Error processing document ${documentId}:`, error);
     await supabase.from('documents').update({ status: 'failed' }).eq('id', documentId);
+  } finally {
+    if (tempPath) {
+      await fs.unlink(tempPath).catch(() => {});
+    }
   }
 };
 
@@ -194,15 +208,16 @@ export const deleteDocument = async (req, res, next) => {
       return res.status(404).json({ success: false, error: 'Document not found', statusCode: 404 });
     }
 
-    if (document.stored_filename) {
-      const filePath = path.join(uploadDir, document.stored_filename);
-      await fs.unlink(filePath).catch(() => {});
+    if (isSupabaseStoragePath(document.filepath) && document.stored_filename) {
+      await deleteDocumentFile(document.stored_filename).catch((err) => {
+        console.warn('Failed to delete storage object:', err.message);
+      });
+    } else if (document.stored_filename && isLocalUploadPath(document.filepath)) {
+      const legacyPath = path.join(uploadDir, path.basename(document.stored_filename));
+      await fs.unlink(legacyPath).catch(() => {});
     }
 
-    const { error: deleteError } = await supabase
-      .from('documents')
-      .delete()
-      .eq('id', document.id);
+    const { error: deleteError } = await supabase.from('documents').delete().eq('id', document.id);
 
     if (deleteError) throw deleteError;
 

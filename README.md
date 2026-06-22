@@ -37,6 +37,7 @@ Inspired by the [Time To Program tutorial](https://www.youtube.com/watch?v=iaAdW
 1. Create a project at [supabase.com](https://supabase.com)
 2. Open **SQL Editor** → **New query**
 3. Paste and run the contents of `backend/supabase/schema.sql`
+4. Run `backend/supabase/migrations/002_storage_bucket.sql` to create the **documents** storage bucket (uploaded files are stored in Supabase, not on the API server)
 
 ### 2. Backend
 
@@ -52,6 +53,7 @@ Edit `backend/.env` with your keys from **Supabase → Project Settings → API*
 - `OPENROUTER_API_KEY` — from [OpenRouter Keys](https://openrouter.ai/keys)
 - `OPENROUTER_MODEL` — optional; defaults to a free model (see [models](https://openrouter.ai/models))
 - `JWT_SECRET` — any secure random string
+- `SUPABASE_STORAGE_BUCKET` — optional; defaults to `documents`
 
 ```bash
 npm install
@@ -118,7 +120,7 @@ learning_assistant/
 
 ## Production Deployment
 
-The frontend is deployed on **Vercel**. The Express API should be deployed separately (e.g. **Render**) because it needs persistent file uploads and long-running AI requests.
+The frontend is deployed on **Vercel**. The Express API should be deployed separately (e.g. **Render**) for long-running AI requests. **Document files are stored in Supabase Storage**, not on Render’s ephemeral disk.
 
 ### 1. Deploy the API (Render)
 
@@ -128,7 +130,7 @@ The frontend is deployed on **Vercel**. The Express API should be deployed separ
 4. **Build command:** `npm install`
 5. **Start command:** `npm start`
 6. Add environment variables from `backend/.env.example`:
-   - `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`
+   - `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_STORAGE_BUCKET=documents` (optional)
    - `OPENROUTER_API_KEY`, `OPENROUTER_MODEL`
    - `JWT_SECRET`, `NODE_ENV=production`
    - `API_BASE_URL` — your Render service URL (e.g. `https://ai-learning-assistant-api.onrender.com`)

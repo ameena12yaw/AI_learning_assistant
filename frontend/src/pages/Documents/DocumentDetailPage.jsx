@@ -42,17 +42,18 @@ const DocumentDetailPage = () => {
 
 
   const getFileUrl = () => {
-    if (!document?.data?.filepath) {
+    const filePath = document?.data?.filepath;
+    if (!filePath) {
       return null;
     }
 
-    const filePath = document.data.filepath;
-    
     if (filePath.startsWith('http://') || filePath.startsWith('https://')) {
       return filePath;
     }
 
+    // Legacy documents stored on the API server disk
     const baseUrl = API_BASE_URL;
+    if (!baseUrl) return null;
     return `${baseUrl}/${filePath.startsWith('/') ? filePath.slice(1) : filePath}`;
   };
 

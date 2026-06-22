@@ -79,10 +79,16 @@ app.use('/api/progress', progressRoutes);
 app.use(errorHandler);
 
 app.use((req, res) => {
+  const isApiRoute = req.path.startsWith('/api');
   res.status(404).json({
     success: false,
     error: 'Route not found',
     statusCode: 404,
+    method: req.method,
+    path: req.path,
+    hint: isApiRoute
+      ? 'This API path does not exist or requires a different HTTP method (e.g. /api/auth/login is POST only, not GET).'
+      : 'This is the API server. Open the React app in your browser (local dev: http://localhost:5173).',
   });
 });
 
