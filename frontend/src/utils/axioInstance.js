@@ -52,7 +52,19 @@ axiosInstance.interceptors.response.use(
     }
 
     if (!error.response && (error.code === 'ERR_NETWORK' || error.message === 'Network Error')) {
-      return Promise.reject(new Error(getApiConnectionErrorMessage()));
+      return Promise.reject(
+        new Error(
+          `${getApiConnectionErrorMessage()} If the API health check works in the browser, set FRONTEND_URL on Render to your Vercel URL.`
+        )
+      );
+    }
+
+    if (error.response?.data?.error?.includes?.('CORS blocked')) {
+      return Promise.reject(
+        new Error(
+          'CORS blocked by the API. On Render, set FRONTEND_URL to your exact Vercel site URL and redeploy the backend.'
+        )
+      );
     }
 
     if (error.response?.status === 405) {

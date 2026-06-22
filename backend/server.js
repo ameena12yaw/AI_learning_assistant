@@ -7,7 +7,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import './config/supabase.js';
 import { assertOpenRouterConfigured } from './config/openrouter.js';
-import { getAllowedOrigins } from './utils/appUrl.js';
+import { getAllowedOrigins, isOriginAllowed } from './utils/appUrl.js';
 import errorHandler from './middleware/errorHandler.js';
 import authRoutes from './routes/authRoutes.js';
 import documentRoutes from './routes/documentRoutes.js';
@@ -33,12 +33,13 @@ app.use(
 app.use(
   cors({
     origin(origin, callback) {
-      if (!origin || allowedOrigins.includes(origin)) {
+      if (isOriginAllowed(origin)) {
         callback(null, true);
         return;
       }
 
-      callback(new Error(`CORS blocked for origin: ${origin}`));
+      console.warn(`CORS blocked for origin: ${origin}`);
+      callback(null, false);
     },
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization'],

@@ -19,5 +19,21 @@ export const getAllowedOrigins = () => {
     return [...new Set([...configured, 'http://localhost:5173', 'http://127.0.0.1:5173'])];
   }
 
-  return configured.length > 0 ? configured : ['http://localhost:5173'];
+  return configured;
+};
+
+export const isOriginAllowed = (origin) => {
+  if (!origin) return true;
+
+  const allowedOrigins = getAllowedOrigins();
+  if (allowedOrigins.includes(origin)) return true;
+
+  try {
+    const { hostname } = new URL(origin);
+    if (hostname.endsWith('.vercel.app')) return true;
+  } catch {
+    return false;
+  }
+
+  return false;
 };
