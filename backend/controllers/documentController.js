@@ -2,6 +2,7 @@ import supabase from '../config/supabase.js';
 import { extractTextFromDocument } from '../utils/documentParser.js';
 import { chunkText } from '../utils/textChunker.js';
 import { mapDocument, isValidUuid } from '../utils/formatDb.js';
+import { getApiBaseUrl } from '../utils/appUrl.js';
 
 import fs from 'fs/promises';
 import path from 'path';
@@ -23,7 +24,7 @@ export const uploadDocument = async (req, res, next) => {
       return res.status(400).json({ success: false, error: 'Title is required', statusCode: 400 });
     }
 
-    const baseUrl = `http://localhost:${process.env.PORT || 8000}`;
+    const baseUrl = getApiBaseUrl();
     const fileUrl = `${baseUrl}/uploads/documents/${req.file.filename}`;
 
     const { data: document, error } = await supabase

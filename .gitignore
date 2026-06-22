@@ -28,3 +28,7 @@ bash.exe.stackdump
 # Environment & uploads
 backend/.env
 backend/uploads/
+frontend/.env
+frontend/.env.local
+frontend/.env.production
+frontend/.env.production.local

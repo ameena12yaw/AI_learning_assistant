@@ -130,7 +130,7 @@ async function requestCompletion(apiKey, model, prompt, options = {}) {
     headers: {
       Authorization: `Bearer ${apiKey}`,
       'Content-Type': 'application/json',
-      'HTTP-Referer': process.env.OPENROUTER_SITE_URL || 'http://localhost:5173',
+      'HTTP-Referer': process.env.OPENROUTER_SITE_URL || process.env.FRONTEND_URL?.split(',')[0]?.trim() || 'http://localhost:5173',
       'X-Title': process.env.OPENROUTER_APP_NAME || 'Learning Assistant',
     },
     body: JSON.stringify({

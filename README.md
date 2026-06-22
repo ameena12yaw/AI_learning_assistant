@@ -115,3 +115,57 @@ learning_assistant/
 | `POST /api/ai/generate-flashcards` | Generate flashcards |
 | `POST /api/ai/generate-quiz` | Generate quiz |
 | `GET /api/progress/dashboard` | Dashboard stats |
+
+## Production Deployment
+
+The frontend is deployed on **Vercel**. The Express API should be deployed separately (e.g. **Render**) because it needs persistent file uploads and long-running AI requests.
+
+### 1. Deploy the API (Render)
+
+1. Push this repo to GitHub.
+2. Create a **Web Service** on [Render](https://render.com) from the repo.
+3. Set **Root Directory** to `backend`.
+4. **Build command:** `npm install`
+5. **Start command:** `npm start`
+6. Add environment variables from `backend/.env.example`:
+   - `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`
+   - `OPENROUTER_API_KEY`, `OPENROUTER_MODEL`
+   - `JWT_SECRET`, `NODE_ENV=production`
+   - `API_BASE_URL` — your Render service URL (e.g. `https://ai-learning-assistant-api.onrender.com`)
+   - `FRONTEND_URL` — your Vercel app URL (e.g. `https://your-app.vercel.app`)
+   - `OPENROUTER_SITE_URL` — same as `FRONTEND_URL` (optional)
+
+Or use the included `render.yaml` blueprint for one-click setup.
+
+### 2. Deploy the frontend (Vercel)
+
+**Option A — Root Directory: `frontend` (recommended)**
+
+| Setting | Value |
+|---------|--------|
+| Root Directory | `frontend` |
+| Framework Preset | Vite |
+| Build Command | `npm run build` |
+| Output Directory | `dist` |
+| Node.js Version | 20 |
+
+**Option B — deploy from repo root**
+
+| Setting | Value |
+|---------|--------|
+| Build Command | `npm run build` |
+| Output Directory | `frontend/dist` |
+| Install Command | `npm install` (default) |
+
+**Vercel environment variable (required):**
+
+```
+VITE_API_BASE_URL=https://your-api.onrender.com
+```
+
+Redeploy after adding env vars. Vite bakes `VITE_*` values in at build time.
+
+### 3. Verify
+
+- API health: `GET https://your-api.onrender.com/api/health`
+- Frontend loads and login/register work against the deployed API
